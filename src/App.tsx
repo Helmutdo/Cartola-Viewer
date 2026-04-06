@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AlertsPanel } from './components/AlertsPanel'
 import { BudgetPlanner } from './components/BudgetPlanner'
 import { CategoryEditorModal } from './components/CategoryEditorModal'
+import { CategoryManager } from './components/CategoryManager'
 import { CategoryPieChart } from './components/CategoryPieChart'
 import { MetricCards } from './components/MetricCards'
 import { MonthBarChart } from './components/MonthBarChart'
@@ -94,6 +95,7 @@ export default function App() {
             <MonthBarChart months={months} />
             <BudgetPlanner transactions={txs} />
             <RulesPanel />
+            <CategoryManager />
             <TransactionTable transactions={txs} monthKey={selectedKey ?? ''} onCategoryClick={setModalTx} />
           </>
         )}

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { CategoryRule } from '../lib/rules'
 import { useCartola } from '../store/useCartola'
-import { CATEGORY_TREE, getMainCategory, type SubCategory } from '../types'
+import { getMainCategory } from '../types'
 
 const MATCH_LABELS: Record<CategoryRule['matchType'], string> = {
   contains: 'Contiene',
@@ -14,10 +14,13 @@ export function RulesPanel() {
   const addRule = useCartola((s) => s.addRule)
   const removeRule = useCartola((s) => s.removeRule)
   const reapplyRules = useCartola((s) => s.reapplyRules)
+  const categoryTree = useCartola((s) => s.categoryTree)
 
   const [pattern, setPattern] = useState('')
   const [matchType, setMatchType] = useState<CategoryRule['matchType']>('contains')
-  const [category, setCategory] = useState<SubCategory>('Supermercado')
+  const [category, setCategory] = useState<string>(() => {
+    return categoryTree[0]?.subcategories[0]?.name ?? 'Sin categorizar'
+  })
 
   function handleAdd() {
     const trimmed = pattern.trim()
@@ -45,7 +48,6 @@ export function RulesPanel() {
         </button>
       </div>
 
-      {/* Table */}
       {rules.length > 0 ? (
         <div className="mb-4 overflow-x-auto rounded-lg border border-slate-800">
           <table className="w-full min-w-[480px] text-left text-sm">
@@ -63,7 +65,7 @@ export function RulesPanel() {
                   <td className="px-3 py-2 font-mono text-slate-200">{r.pattern}</td>
                   <td className="px-3 py-2 text-slate-400">{MATCH_LABELS[r.matchType]}</td>
                   <td className="px-3 py-2 text-slate-300">
-                    <span className="text-slate-500">{getMainCategory(r.category)} › </span>
+                    <span className="text-slate-500">{getMainCategory(r.category, categoryTree)} › </span>
                     {r.category}
                   </td>
                   <td className="px-3 py-2 text-right">
@@ -115,14 +117,14 @@ export function RulesPanel() {
           Subcategoría
           <select
             value={category}
-            onChange={(e) => setCategory(e.target.value as SubCategory)}
+            onChange={(e) => setCategory(e.target.value)}
             className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
           >
-            {Object.entries(CATEGORY_TREE).map(([main, subs]) => (
-              <optgroup key={main} label={main}>
-                {subs.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
+            {categoryTree.map((cat) => (
+              <optgroup key={cat.id} label={cat.name}>
+                {cat.subcategories.map((sub) => (
+                  <option key={sub.id} value={sub.name}>
+                    {sub.name}
                   </option>
                 ))}
               </optgroup>

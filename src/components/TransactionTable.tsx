@@ -1,20 +1,15 @@
 import { useMemo, useState } from 'react'
-import type { SubCategory, Transaction } from '../types'
-import {
-  CATEGORY_TREE,
-  effectiveCategory,
-  getMainCategory,
-  MAIN_CATEGORY_HEX,
-} from '../types'
+import { useCartola } from '../store/useCartola'
+import type { Transaction } from '../types'
+import { effectiveCategory, getMainCategory } from '../types'
 
 function exportCsv(transactions: Transaction[], monthKey: string) {
   const header = 'fecha,descripcion,categoria_principal,subcategoria,cargo,abono\n'
   const rows = transactions
     .map((t) => {
       const sub = effectiveCategory(t)
-      const main = getMainCategory(sub)
       const desc = `"${t.desc.replace(/"/g, '""')}"`
-      return [t.fecha, desc, main, sub, t.cargo > 0 ? t.cargo : '', t.abono > 0 ? t.abono : ''].join(',')
+      return [t.fecha, desc, sub, t.cargo > 0 ? t.cargo : '', t.abono > 0 ? t.abono : ''].join(',')
     })
     .join('\n')
   const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })
@@ -54,7 +49,14 @@ export function TransactionTable({
   monthKey: string
   onCategoryClick: (t: Transaction) => void
 }) {
-  const [catFilter, setCatFilter] = useState<SubCategory | 'todas'>('todas')
+  const categoryTree = useCartola((s) => s.categoryTree)
+
+  const colorMap = useMemo(
+    () => Object.fromEntries(categoryTree.map((c) => [c.name, c.color])),
+    [categoryTree],
+  )
+
+  const [catFilter, setCatFilter] = useState<string>('todas')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('todos')
 
   const filtered = useMemo(() => {
@@ -91,15 +93,15 @@ export function TransactionTable({
           Categoría
           <select
             value={catFilter}
-            onChange={(e) => setCatFilter(e.target.value as SubCategory | 'todas')}
+            onChange={(e) => setCatFilter(e.target.value)}
             className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
           >
             <option value="todas">Todas</option>
-            {Object.entries(CATEGORY_TREE).map(([main, subs]) => (
-              <optgroup key={main} label={main}>
-                {subs.map((sub) => (
-                  <option key={sub} value={sub}>
-                    {sub}
+            {categoryTree.map((cat) => (
+              <optgroup key={cat.id} label={cat.name}>
+                {cat.subcategories.map((sub) => (
+                  <option key={sub.id} value={sub.name}>
+                    {sub.name}
                   </option>
                 ))}
               </optgroup>
@@ -134,8 +136,8 @@ export function TransactionTable({
           <tbody className="divide-y divide-slate-800">
             {sorted.map((t) => {
               const sub = effectiveCategory(t)
-              const main = getMainCategory(sub)
-              const dotColor = MAIN_CATEGORY_HEX[main] ?? '#94a3b8'
+              const main = getMainCategory(sub, categoryTree)
+              const dotColor = colorMap[main] ?? '#94a3b8'
               return (
                 <tr key={t.id} className="hover:bg-slate-800/40">
                   <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-400">{t.fecha}</td>
@@ -154,10 +156,7 @@ export function TransactionTable({
                       onClick={() => onCategoryClick(t)}
                       className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:bg-slate-700"
                     >
-                      <span
-                        className="h-2 w-2 shrink-0 rounded-full"
-                        style={{ background: dotColor }}
-                      />
+                      <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: dotColor }} />
                       {sub}
                       {t.catOverride ? <PencilIcon /> : null}
                     </button>

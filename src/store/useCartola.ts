@@ -6,16 +6,19 @@ import {
   clearAll,
   loadAllMonths,
   loadBudgets,
+  loadCategoryTree,
   loadOverrides,
   loadPrefixOverrides,
   loadRules,
   saveBudgets,
+  saveCategoryTree,
   saveMonthData,
   savePrefixOverride,
   saveRules,
   type BudgetMap,
 } from '../lib/storage'
-import type { MainCategory, MonthData, SubCategory, Transaction } from '../types'
+import type { CategoryTree, MonthData, SubCategory, Transaction } from '../types'
+import { effectiveCategory } from '../types'
 
 function rowsToTransactions(
   rows: ParsedRow[],
@@ -60,7 +63,6 @@ function groupRowsToMonths(
   }))
 }
 
-/** Re-categoriza todas las transacciones en memoria (sin alterar catOverride). */
 function recategorizeMonths(months: MonthData[], rules: CategoryRule[]): MonthData[] {
   return months.map((m) => ({
     ...m,
@@ -76,18 +78,29 @@ interface CartolaState {
   selectedMonthKey: string | null
   budgets: BudgetMap
   rules: CategoryRule[]
+  categoryTree: CategoryTree
   parseError: string | null
   isParsing: boolean
+
   hydrate: () => void
   addPdfFiles: (files: FileList | File[]) => Promise<void>
   setSelectedMonthKey: (key: string | null) => void
   applyCategoryToDesc: (desc: string, cat: SubCategory) => void
   applyCategoryToTransaction: (id: string, cat: SubCategory) => void
-  setBudget: (cat: MainCategory, limit: number | undefined) => void
+  setBudget: (cat: string, limit: number | undefined) => void
   addRule: (rule: CategoryRule) => void
   removeRule: (id: string) => void
   updateRule: (id: string, changes: Partial<CategoryRule>) => void
   reapplyRules: () => void
+
+  setCategoryTree: (tree: CategoryTree) => void
+  /** Migra la clave de presupuesto al renombrar una categoría principal */
+  renameMainCategory: (oldName: string, newName: string) => void
+  /** Actualiza cat y catOverride en todas las transacciones al renombrar una subcategoría */
+  renameSubcategory: (oldName: string, newName: string) => void
+  /** Pone 'Sin categorizar' en las transacciones que usen alguna de esas subcategorías */
+  removeSubcategories: (subNames: string[]) => void
+
   resetAll: () => void
 }
 
@@ -104,6 +117,7 @@ export const useCartola = create<CartolaState>((set, get) => ({
   selectedMonthKey: null,
   budgets: {},
   rules: [],
+  categoryTree: [],
   parseError: null,
   isParsing: false,
 
@@ -111,11 +125,13 @@ export const useCartola = create<CartolaState>((set, get) => ({
     const months = loadAllMonths()
     const budgets = loadBudgets()
     const rules = loadRules()
+    const categoryTree = loadCategoryTree()
     const keys = months.map(monthKeyOf).filter(Boolean).sort()
     set({
       months,
       budgets,
       rules,
+      categoryTree,
       selectedMonthKey:
         get().selectedMonthKey && keys.includes(get().selectedMonthKey!)
           ? get().selectedMonthKey
@@ -231,8 +247,57 @@ export const useCartola = create<CartolaState>((set, get) => ({
     set({ months })
   },
 
+  setCategoryTree: (tree) => {
+    saveCategoryTree(tree)
+    set({ categoryTree: tree })
+  },
+
+  renameMainCategory: (oldName, newName) => {
+    if (oldName === newName) return
+    const budgets = { ...get().budgets }
+    if (oldName in budgets) {
+      budgets[newName] = budgets[oldName]
+      delete budgets[oldName]
+      saveBudgets(budgets)
+      set({ budgets })
+    }
+  },
+
+  renameSubcategory: (oldName, newName) => {
+    if (oldName === newName) return
+    const months = get().months.map((m) => ({
+      ...m,
+      transactions: m.transactions.map((t) => ({
+        ...t,
+        cat: t.cat === oldName ? newName : t.cat,
+        catOverride: t.catOverride === oldName ? newName : t.catOverride,
+      })),
+    }))
+    persistAllMonths(months)
+    set({ months })
+  },
+
+  removeSubcategories: (subNames) => {
+    const removed = new Set(subNames)
+    const months = get().months.map((m) => ({
+      ...m,
+      transactions: m.transactions.map((t) => {
+        const eff = effectiveCategory(t)
+        if (!removed.has(eff)) return t
+        return {
+          ...t,
+          cat: removed.has(t.cat) ? 'Sin categorizar' : t.cat,
+          catOverride: t.catOverride !== undefined && removed.has(t.catOverride) ? undefined : t.catOverride,
+        }
+      }),
+    }))
+    persistAllMonths(months)
+    set({ months })
+  },
+
   resetAll: () => {
     clearAll()
-    set({ months: [], selectedMonthKey: null, budgets: {}, rules: [], parseError: null })
+    const categoryTree = loadCategoryTree() // clearAll removed the key → regenera default
+    set({ months: [], selectedMonthKey: null, budgets: {}, rules: [], categoryTree, parseError: null })
   },
 }))

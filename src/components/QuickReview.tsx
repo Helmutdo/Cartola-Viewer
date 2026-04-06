@@ -1,16 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useCartola } from '../store/useCartola'
 import type { CategoryRule } from '../lib/rules'
-import {
-  ALL_MAIN_CATEGORIES,
-  CATEGORY_TREE,
-  effectiveCategory,
-  MAIN_CATEGORY_COLORS,
-  MAIN_CATEGORY_HEX,
-  type MainCategory,
-  type SubCategory,
-  type Transaction,
-} from '../types'
+import type { CategoryDefinition, Transaction } from '../types'
+import { effectiveCategory } from '../types'
 
 function fmt(n: number) {
   if (n <= 0) return '—'
@@ -26,9 +18,10 @@ function ReviewModal({
 }) {
   const applyOne = useCartola((s) => s.applyCategoryToTransaction)
   const addRule = useCartola((s) => s.addRule)
+  const categoryTree = useCartola((s) => s.categoryTree)
 
   const [index, setIndex] = useState(0)
-  const [expandedMain, setExpandedMain] = useState<MainCategory | null>(null)
+  const [expandedCat, setExpandedCat] = useState<CategoryDefinition | null>(null)
   const [createRule, setCreateRule] = useState(false)
   const [done, setDone] = useState(false)
 
@@ -42,7 +35,7 @@ function ReviewModal({
         setIndex((i) => {
           const next = i + delta
           if (next < 0 || next >= uncategorized.length) return i
-          setExpandedMain(null)
+          setExpandedCat(null)
           return next
         })
       }
@@ -51,7 +44,7 @@ function ReviewModal({
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose, uncategorized.length])
 
-  function chooseSub(sub: SubCategory) {
+  function chooseSub(sub: string) {
     if (!tx) return
     applyOne(tx.id, sub)
 
@@ -67,14 +60,13 @@ function ReviewModal({
       addRule(rule)
     }
 
-    // Avanzar
     const nextIndex = index + 1
     if (nextIndex >= uncategorized.length) {
       setDone(true)
       setTimeout(onClose, 1200)
     } else {
       setIndex(nextIndex)
-      setExpandedMain(null)
+      setExpandedCat(null)
       setCreateRule(false)
     }
   }
@@ -83,7 +75,7 @@ function ReviewModal({
     const next = index + delta
     if (next < 0 || next >= uncategorized.length) return
     setIndex(next)
-    setExpandedMain(null)
+    setExpandedCat(null)
     setCreateRule(false)
   }
 
@@ -99,6 +91,8 @@ function ReviewModal({
 
   if (!tx) return null
 
+  const mainCats = categoryTree.filter((c) => c.name !== 'Sin categorizar')
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
@@ -112,12 +106,7 @@ function ReviewModal({
           <span className="text-xs text-slate-500">
             Revisando {index + 1} de {uncategorized.length}
           </span>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-slate-500 hover:text-slate-200"
-            aria-label="Cerrar"
-          >
+          <button type="button" onClick={onClose} className="text-slate-500 hover:text-slate-200" aria-label="Cerrar">
             ✕
           </button>
         </div>
@@ -127,50 +116,48 @@ function ReviewModal({
         <p className="mt-1 text-sm text-slate-500">
           {tx.fecha}
           {tx.cargo > 0 ? (
-            <>
-              {' '}— <span className="text-rose-300">{fmt(tx.cargo)}</span>
-            </>
+            <> — <span className="text-rose-300">{fmt(tx.cargo)}</span></>
           ) : tx.abono > 0 ? (
-            <>
-              {' '}— <span className="text-teal-300">{fmt(tx.abono)}</span>
-            </>
+            <> — <span className="text-teal-300">{fmt(tx.abono)}</span></>
           ) : null}
         </p>
 
         {/* Main category grid */}
         <div className="mt-5 grid grid-cols-3 gap-2">
-          {ALL_MAIN_CATEGORIES.filter((m) => m !== 'Sin categorizar').map((main) => {
-            const isExpanded = expandedMain === main
-            const hex = MAIN_CATEGORY_HEX[main]
+          {mainCats.map((cat) => {
+            const isExpanded = expandedCat?.id === cat.id
             return (
               <button
-                key={main}
+                key={cat.id}
                 type="button"
-                onClick={() => setExpandedMain(isExpanded ? null : main)}
-                className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                onClick={() => setExpandedCat(isExpanded ? null : cat)}
+                className={
                   isExpanded
-                    ? 'border-transparent text-white'
-                    : 'border-slate-700 bg-slate-800 text-slate-200 hover:bg-slate-700'
-                }`}
-                style={isExpanded ? { background: hex, borderColor: hex } : undefined}
+                    ? 'rounded-lg border px-3 py-2 text-sm font-medium text-white transition-colors'
+                    : 'rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-medium text-slate-200 transition-colors hover:bg-slate-700'
+                }
+                style={
+                  isExpanded ? { background: cat.color, borderColor: cat.color } : undefined
+                }
               >
-                {main}
+                {cat.name}
               </button>
             )
           })}
         </div>
 
         {/* SubCategory expansion */}
-        {expandedMain ? (
+        {expandedCat ? (
           <div className="mt-3 flex flex-wrap gap-2">
-            {CATEGORY_TREE[expandedMain].map((sub) => (
+            {expandedCat.subcategories.map((sub) => (
               <button
-                key={sub}
+                key={sub.id}
                 type="button"
-                onClick={() => chooseSub(sub)}
-                className={`rounded-full px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-90 ${MAIN_CATEGORY_COLORS[expandedMain]}`}
+                onClick={() => chooseSub(sub.name)}
+                className="rounded-full px-3 py-1 text-xs font-medium text-white transition-opacity hover:opacity-80"
+                style={{ background: expandedCat.color }}
               >
-                {sub}
+                {sub.name}
               </button>
             ))}
           </div>
@@ -245,9 +232,7 @@ export function QuickReview({ transactions }: { transactions: Transaction[] }) {
         </button>
       </div>
 
-      {open ? (
-        <ReviewModal uncategorized={uncategorized} onClose={() => setOpen(false)} />
-      ) : null}
+      {open ? <ReviewModal uncategorized={uncategorized} onClose={() => setOpen(false)} /> : null}
     </>
   )
 }

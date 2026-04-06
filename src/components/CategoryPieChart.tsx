@@ -1,14 +1,21 @@
+import { useMemo } from 'react'
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
+import { useCartola } from '../store/useCartola'
 import type { Transaction } from '../types'
-import { effectiveCategory, getMainCategory, MAIN_CATEGORY_HEX, type MainCategory } from '../types'
-
-const EXCLUDE: MainCategory[] = ['Transferencias']
+import { effectiveCategory, getMainCategory } from '../types'
 
 export function CategoryPieChart({ transactions }: { transactions: Transaction[] }) {
-  const sums = new Map<MainCategory, number>()
+  const categoryTree = useCartola((s) => s.categoryTree)
+
+  const colorMap = useMemo(
+    () => Object.fromEntries(categoryTree.map((c) => [c.name, c.color])),
+    [categoryTree],
+  )
+
+  const sums = new Map<string, number>()
   for (const t of transactions) {
-    const main = getMainCategory(effectiveCategory(t))
-    if (EXCLUDE.includes(main)) continue
+    const main = getMainCategory(effectiveCategory(t), categoryTree)
+    if (main === 'Transferencias') continue
     const v = t.cargo
     if (v <= 0) continue
     sums.set(main, (sums.get(main) ?? 0) + v)
@@ -45,7 +52,7 @@ export function CategoryPieChart({ transactions }: { transactions: Transaction[]
               {data.map((entry) => (
                 <Cell
                   key={entry.name}
-                  fill={MAIN_CATEGORY_HEX[entry.name as MainCategory] ?? '#94a3b8'}
+                  fill={colorMap[entry.name] ?? '#94a3b8'}
                   stroke="#0f172a"
                   strokeWidth={1}
                 />
@@ -67,10 +74,7 @@ export function CategoryPieChart({ transactions }: { transactions: Transaction[]
       <ul className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
         {data.map((d) => (
           <li key={d.name} className="flex items-center gap-1">
-            <span
-              className="h-2 w-2 rounded-full"
-              style={{ background: MAIN_CATEGORY_HEX[d.name as MainCategory] ?? '#94a3b8' }}
-            />
+            <span className="h-2 w-2 rounded-full" style={{ background: colorMap[d.name] ?? '#94a3b8' }} />
             {d.name}
           </li>
         ))}

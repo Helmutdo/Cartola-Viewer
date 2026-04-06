@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useCartola } from '../store/useCartola'
 import type { Transaction } from '../types'
-import { ALL_MAIN_CATEGORIES, effectiveCategory, getMainCategory, type MainCategory } from '../types'
+import { effectiveCategory, getMainCategory } from '../types'
 
 function fmt(n: number) {
   return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
@@ -10,16 +10,17 @@ function fmt(n: number) {
 export function BudgetPlanner({ transactions }: { transactions: Transaction[] }) {
   const budgets = useCartola((s) => s.budgets)
   const setBudget = useCartola((s) => s.setBudget)
+  const categoryTree = useCartola((s) => s.categoryTree)
 
-  const spentByCat = useMemo(() => {
-    const m = new Map<MainCategory, number>()
-    for (const c of ALL_MAIN_CATEGORIES) m.set(c, 0)
+  const spentByMain = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const cat of categoryTree) m.set(cat.name, 0)
     for (const t of transactions) {
-      const main = getMainCategory(effectiveCategory(t))
+      const main = getMainCategory(effectiveCategory(t), categoryTree)
       m.set(main, (m.get(main) ?? 0) + t.cargo)
     }
     return m
-  }, [transactions])
+  }, [transactions, categoryTree])
 
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-4">
@@ -36,15 +37,20 @@ export function BudgetPlanner({ transactions }: { transactions: Transaction[] })
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
-            {ALL_MAIN_CATEGORIES.map((cat) => {
-              const spent = spentByCat.get(cat) ?? 0
-              const limit = budgets[cat]
+            {categoryTree.map((cat) => {
+              const spent = spentByMain.get(cat.name) ?? 0
+              const limit = budgets[cat.name]
               const diff = limit !== undefined ? limit - spent : undefined
               const over = diff !== undefined && diff < 0
               const pct = limit && limit > 0 ? Math.min((spent / limit) * 100, 100) : 0
               return (
-                <tr key={cat}>
-                  <td className="py-2 pr-2 text-slate-200">{cat}</td>
+                <tr key={cat.id}>
+                  <td className="py-2 pr-2">
+                    <span className="flex items-center gap-1.5 text-slate-200">
+                      <span className="h-2 w-2 rounded-full" style={{ background: cat.color }} />
+                      {cat.name}
+                    </span>
+                  </td>
                   <td className="py-2 pr-2">
                     <input
                       type="number"
@@ -54,8 +60,8 @@ export function BudgetPlanner({ transactions }: { transactions: Transaction[] })
                       value={limit ?? ''}
                       onChange={(e) => {
                         const v = e.target.value
-                        if (v === '') setBudget(cat, undefined)
-                        else setBudget(cat, parseFloat(v))
+                        if (v === '') setBudget(cat.name, undefined)
+                        else setBudget(cat.name, parseFloat(v))
                       }}
                       className="w-32 rounded border border-slate-600 bg-slate-800 px-2 py-1 tabular-nums text-slate-100"
                     />
