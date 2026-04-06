@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useCartola } from '../store/useCartola'
 import type { Transaction } from '../types'
-import { ALL_CATEGORIES, effectiveCategory, type Category } from '../types'
+import { ALL_MAIN_CATEGORIES, effectiveCategory, getMainCategory, type MainCategory } from '../types'
 
 function fmt(n: number) {
   return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
@@ -12,11 +12,11 @@ export function BudgetPlanner({ transactions }: { transactions: Transaction[] })
   const setBudget = useCartola((s) => s.setBudget)
 
   const spentByCat = useMemo(() => {
-    const m = new Map<Category, number>()
-    for (const c of ALL_CATEGORIES) m.set(c, 0)
+    const m = new Map<MainCategory, number>()
+    for (const c of ALL_MAIN_CATEGORIES) m.set(c, 0)
     for (const t of transactions) {
-      const cat = effectiveCategory(t)
-      m.set(cat, (m.get(cat) ?? 0) + t.cargo)
+      const main = getMainCategory(effectiveCategory(t))
+      m.set(main, (m.get(main) ?? 0) + t.cargo)
     }
     return m
   }, [transactions])
@@ -36,7 +36,7 @@ export function BudgetPlanner({ transactions }: { transactions: Transaction[] })
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-800">
-            {ALL_CATEGORIES.map((cat) => {
+            {ALL_MAIN_CATEGORIES.map((cat) => {
               const spent = spentByCat.get(cat) ?? 0
               const limit = budgets[cat]
               const diff = limit !== undefined ? limit - spent : undefined

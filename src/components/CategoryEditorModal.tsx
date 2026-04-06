@@ -1,14 +1,23 @@
 import { useState } from 'react'
 import { useCartola } from '../store/useCartola'
-import { ALL_CATEGORIES, CATEGORY_COLORS, effectiveCategory, type Category, type Transaction } from '../types'
+import {
+  CATEGORY_TREE,
+  effectiveCategory,
+  getMainCategory,
+  MAIN_CATEGORY_COLORS,
+  type SubCategory,
+  type Transaction,
+} from '../types'
 
 export function CategoryEditorModal({ tx, onClose }: { tx: Transaction; onClose: () => void }) {
   const applyDesc = useCartola((s) => s.applyCategoryToDesc)
   const applyOne = useCartola((s) => s.applyCategoryToTransaction)
-  const [sel, setSel] = useState<Category>(() => effectiveCategory(tx))
+  const [sel, setSel] = useState<SubCategory>(() => effectiveCategory(tx))
 
   const current = effectiveCategory(tx)
   const auto = tx.cat
+
+  const mainColor = MAIN_CATEGORY_COLORS[getMainCategory(sel)] ?? 'bg-slate-400'
 
   return (
     <div
@@ -43,19 +52,25 @@ export function CategoryEditorModal({ tx, onClose }: { tx: Transaction; onClose:
         </label>
         <select
           value={sel}
-          onChange={(e) => setSel(e.target.value as Category)}
+          onChange={(e) => setSel(e.target.value as SubCategory)}
           className="mt-1 w-full rounded-lg border border-slate-600 bg-slate-800 px-3 py-2 text-sm text-slate-100 outline-none focus:ring-2 focus:ring-amber-500/50"
         >
-          {ALL_CATEGORIES.map((c) => (
-            <option key={c} value={c}>
-              {c}
-            </option>
+          {Object.entries(CATEGORY_TREE).map(([main, subs]) => (
+            <optgroup key={main} label={main}>
+              {subs.map((sub) => (
+                <option key={sub} value={sub}>
+                  {sub}
+                </option>
+              ))}
+            </optgroup>
           ))}
         </select>
 
         <div className="mt-2 flex items-center gap-2">
-          <span className={`inline-block h-3 w-3 rounded-full ${CATEGORY_COLORS[sel]}`} />
-          <span className="text-xs text-slate-500">Vista previa del color</span>
+          <span className={`inline-block h-3 w-3 rounded-full ${mainColor}`} />
+          <span className="text-xs text-slate-500">
+            {getMainCategory(sel)} › {sel}
+          </span>
         </div>
 
         <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:flex-wrap">

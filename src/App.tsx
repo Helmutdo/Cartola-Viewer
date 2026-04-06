@@ -6,6 +6,8 @@ import { CategoryPieChart } from './components/CategoryPieChart'
 import { MetricCards } from './components/MetricCards'
 import { MonthBarChart } from './components/MonthBarChart'
 import { MonthTabs } from './components/MonthTabs'
+import { QuickReview } from './components/QuickReview'
+import { RulesPanel } from './components/RulesPanel'
 import { TransactionTable } from './components/TransactionTable'
 import { UploadZone } from './components/UploadZone'
 import { useCartola } from './store/useCartola'
@@ -83,6 +85,7 @@ export default function App() {
         ) : (
           <>
             <MonthTabs />
+            <QuickReview transactions={txs} />
             <MetricCards transactions={txs} />
             <div className="grid gap-6 lg:grid-cols-2">
               <CategoryPieChart transactions={txs} />
@@ -90,6 +93,7 @@ export default function App() {
             </div>
             <MonthBarChart months={months} />
             <BudgetPlanner transactions={txs} />
+            <RulesPanel />
             <TransactionTable transactions={txs} monthKey={selectedKey ?? ''} onCategoryClick={setModalTx} />
           </>
         )}

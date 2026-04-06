@@ -1,17 +1,17 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts'
 import type { Transaction } from '../types'
-import { CATEGORY_HEX, effectiveCategory, type Category } from '../types'
+import { effectiveCategory, getMainCategory, MAIN_CATEGORY_HEX, type MainCategory } from '../types'
 
-const EXCLUDE: Category[] = ['Transferencia enviada', 'Transferencia recibida']
+const EXCLUDE: MainCategory[] = ['Transferencias']
 
 export function CategoryPieChart({ transactions }: { transactions: Transaction[] }) {
-  const sums = new Map<Category, number>()
+  const sums = new Map<MainCategory, number>()
   for (const t of transactions) {
-    const c = effectiveCategory(t)
-    if (EXCLUDE.includes(c)) continue
+    const main = getMainCategory(effectiveCategory(t))
+    if (EXCLUDE.includes(main)) continue
     const v = t.cargo
     if (v <= 0) continue
-    sums.set(c, (sums.get(c) ?? 0) + v)
+    sums.set(main, (sums.get(main) ?? 0) + v)
   }
   const data = [...sums.entries()]
     .map(([name, value]) => ({ name, value }))
@@ -43,7 +43,12 @@ export function CategoryPieChart({ transactions }: { transactions: Transaction[]
               paddingAngle={2}
             >
               {data.map((entry) => (
-                <Cell key={entry.name} fill={CATEGORY_HEX[entry.name as Category]} stroke="#0f172a" strokeWidth={1} />
+                <Cell
+                  key={entry.name}
+                  fill={MAIN_CATEGORY_HEX[entry.name as MainCategory] ?? '#94a3b8'}
+                  stroke="#0f172a"
+                  strokeWidth={1}
+                />
               ))}
             </Pie>
             <Tooltip
@@ -62,7 +67,10 @@ export function CategoryPieChart({ transactions }: { transactions: Transaction[]
       <ul className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
         {data.map((d) => (
           <li key={d.name} className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full" style={{ background: CATEGORY_HEX[d.name as Category] }} />
+            <span
+              className="h-2 w-2 rounded-full"
+              style={{ background: MAIN_CATEGORY_HEX[d.name as MainCategory] ?? '#94a3b8' }}
+            />
             {d.name}
           </li>
         ))}

@@ -1,11 +1,12 @@
-import type { Category } from '../types'
-import type { MonthData } from '../types'
+import type { CategoryRule } from './rules'
+import type { MainCategory, MonthData, SubCategory } from '../types'
 
 const MONTHS_KEY = 'cartola:months'
 const BUDGETS_KEY = 'cartola:budgets'
 const OVERRIDE_PREFIX = 'override:'
 const PREFIX_OVERRIDES_KEY = 'cartola:prefixOverrides'
 const DISMISSED_KEY = 'cartola:dismissed'
+const RULES_KEY = 'cartola_rules'
 
 export function saveMonthData(month: MonthData): void {
   const all = loadAllMonths()
@@ -28,19 +29,19 @@ export function loadAllMonths(): MonthData[] {
   }
 }
 
-export function saveOverride(desc: string, cat: Category): void {
+export function saveOverride(desc: string, cat: SubCategory): void {
   localStorage.setItem(`${OVERRIDE_PREFIX}${desc}`, cat)
 }
 
-export function loadOverrides(): Record<string, Category> {
-  const out: Record<string, Category> = {}
+export function loadOverrides(): Record<string, SubCategory> {
+  const out: Record<string, SubCategory> = {}
   try {
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i)
       if (!k || !k.startsWith(OVERRIDE_PREFIX)) continue
       const desc = k.slice(OVERRIDE_PREFIX.length)
       const v = localStorage.getItem(k)
-      if (v) out[desc] = v as Category
+      if (v) out[desc] = v as SubCategory
     }
   } catch {
     /* ignore */
@@ -48,24 +49,24 @@ export function loadOverrides(): Record<string, Category> {
   return out
 }
 
-/** Override por prefijo (primeros 20 chars): persiste "Aplicar a todos" con fuzzy match */
-export function savePrefixOverride(prefix: string, cat: Category): void {
+/** Override por prefijo (primeros 20 chars) */
+export function savePrefixOverride(prefix: string, cat: SubCategory): void {
   const all = loadPrefixOverrides()
   all[prefix] = cat
   localStorage.setItem(PREFIX_OVERRIDES_KEY, JSON.stringify(all))
 }
 
-export function loadPrefixOverrides(): Record<string, Category> {
+export function loadPrefixOverrides(): Record<string, SubCategory> {
   try {
     const raw = localStorage.getItem(PREFIX_OVERRIDES_KEY)
     if (!raw) return {}
-    return JSON.parse(raw) as Record<string, Category>
+    return JSON.parse(raw) as Record<string, SubCategory>
   } catch {
     return {}
   }
 }
 
-/** Alertas descartadas: array de claves `${monthKey}:tipo[:id]` */
+/** Alertas descartadas */
 export function loadDismissed(): string[] {
   try {
     const raw = localStorage.getItem(DISMISSED_KEY)
@@ -81,6 +82,22 @@ export function saveDismissed(keys: string[]): void {
   localStorage.setItem(DISMISSED_KEY, JSON.stringify(keys))
 }
 
+/** Reglas de categorización */
+export function saveRules(rules: CategoryRule[]): void {
+  localStorage.setItem(RULES_KEY, JSON.stringify(rules))
+}
+
+export function loadRules(): CategoryRule[] {
+  try {
+    const raw = localStorage.getItem(RULES_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    return Array.isArray(parsed) ? (parsed as CategoryRule[]) : []
+  } catch {
+    return []
+  }
+}
+
 export function clearAll(): void {
   const keys: string[] = []
   for (let i = 0; i < localStorage.length; i++) {
@@ -91,6 +108,7 @@ export function clearAll(): void {
       k === BUDGETS_KEY ||
       k === PREFIX_OVERRIDES_KEY ||
       k === DISMISSED_KEY ||
+      k === RULES_KEY ||
       k.startsWith(OVERRIDE_PREFIX)
     ) {
       keys.push(k)
@@ -99,7 +117,7 @@ export function clearAll(): void {
   keys.forEach((k) => localStorage.removeItem(k))
 }
 
-export type BudgetMap = Partial<Record<Category, number>>
+export type BudgetMap = Partial<Record<MainCategory, number>>
 
 export function saveBudgets(b: BudgetMap): void {
   localStorage.setItem(BUDGETS_KEY, JSON.stringify(b))

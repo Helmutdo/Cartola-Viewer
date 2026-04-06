@@ -1,14 +1,20 @@
 import { useMemo, useState } from 'react'
-import type { Transaction } from '../types'
-import { ALL_CATEGORIES, CATEGORY_COLORS, effectiveCategory, type Category } from '../types'
+import type { SubCategory, Transaction } from '../types'
+import {
+  CATEGORY_TREE,
+  effectiveCategory,
+  getMainCategory,
+  MAIN_CATEGORY_HEX,
+} from '../types'
 
 function exportCsv(transactions: Transaction[], monthKey: string) {
-  const header = 'fecha,descripcion,categoria,cargo,abono\n'
+  const header = 'fecha,descripcion,categoria_principal,subcategoria,cargo,abono\n'
   const rows = transactions
     .map((t) => {
-      const cat = effectiveCategory(t)
+      const sub = effectiveCategory(t)
+      const main = getMainCategory(sub)
       const desc = `"${t.desc.replace(/"/g, '""')}"`
-      return [t.fecha, desc, cat, t.cargo > 0 ? t.cargo : '', t.abono > 0 ? t.abono : ''].join(',')
+      return [t.fecha, desc, main, sub, t.cargo > 0 ? t.cargo : '', t.abono > 0 ? t.abono : ''].join(',')
     })
     .join('\n')
   const blob = new Blob([header + rows], { type: 'text/csv;charset=utf-8;' })
@@ -27,6 +33,18 @@ function fmt(n: number) {
 
 type TypeFilter = 'todos' | 'cargos' | 'abonos'
 
+const PencilIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 16 16"
+    fill="currentColor"
+    className="h-3 w-3 shrink-0 opacity-70"
+    aria-label="categoría editada"
+  >
+    <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L2.75 10.776a.75.75 0 0 0-.197.37l-.5 2.5a.75.75 0 0 0 .883.882l2.5-.5a.75.75 0 0 0 .37-.196l8.263-8.263a1.75 1.75 0 0 0 0-2.475Z" />
+  </svg>
+)
+
 export function TransactionTable({
   transactions,
   monthKey,
@@ -36,7 +54,7 @@ export function TransactionTable({
   monthKey: string
   onCategoryClick: (t: Transaction) => void
 }) {
-  const [catFilter, setCatFilter] = useState<Category | 'todas'>('todas')
+  const [catFilter, setCatFilter] = useState<SubCategory | 'todas'>('todas')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('todos')
 
   const filtered = useMemo(() => {
@@ -73,14 +91,18 @@ export function TransactionTable({
           Categoría
           <select
             value={catFilter}
-            onChange={(e) => setCatFilter(e.target.value as Category | 'todas')}
+            onChange={(e) => setCatFilter(e.target.value as SubCategory | 'todas')}
             className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
           >
             <option value="todas">Todas</option>
-            {ALL_CATEGORIES.map((c) => (
-              <option key={c} value={c}>
-                {c}
-              </option>
+            {Object.entries(CATEGORY_TREE).map(([main, subs]) => (
+              <optgroup key={main} label={main}>
+                {subs.map((sub) => (
+                  <option key={sub} value={sub}>
+                    {sub}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -111,7 +133,9 @@ export function TransactionTable({
           </thead>
           <tbody className="divide-y divide-slate-800">
             {sorted.map((t) => {
-              const cat = effectiveCategory(t)
+              const sub = effectiveCategory(t)
+              const main = getMainCategory(sub)
+              const dotColor = MAIN_CATEGORY_HEX[main] ?? '#94a3b8'
               return (
                 <tr key={t.id} className="hover:bg-slate-800/40">
                   <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-400">{t.fecha}</td>
@@ -128,20 +152,14 @@ export function TransactionTable({
                     <button
                       type="button"
                       onClick={() => onCategoryClick(t)}
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium text-white ${CATEGORY_COLORS[cat]} hover:opacity-90`}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-slate-700 bg-slate-800 px-2.5 py-0.5 text-xs font-medium text-slate-200 hover:bg-slate-700"
                     >
-                      {cat}
-                      {t.catOverride ? (
-                        <svg
-                          xmlns="http://www.w3.org/2000/svg"
-                          viewBox="0 0 16 16"
-                          fill="currentColor"
-                          className="h-3 w-3 shrink-0 opacity-80"
-                          aria-label="categoría editada"
-                        >
-                          <path d="M13.488 2.513a1.75 1.75 0 0 0-2.475 0L2.75 10.776a.75.75 0 0 0-.197.37l-.5 2.5a.75.75 0 0 0 .883.882l2.5-.5a.75.75 0 0 0 .37-.196l8.263-8.263a1.75 1.75 0 0 0 0-2.475Z" />
-                        </svg>
-                      ) : null}
+                      <span
+                        className="h-2 w-2 shrink-0 rounded-full"
+                        style={{ background: dotColor }}
+                      />
+                      {sub}
+                      {t.catOverride ? <PencilIcon /> : null}
                     </button>
                   </td>
                 </tr>
