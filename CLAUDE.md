@@ -11,7 +11,7 @@ npm run lint       # eslint
 npm run preview    # preview dist/
 ```
 
-No test suite exists.
+No test suite yet (planned for M2 with Vitest).
 
 ## What This Is
 
@@ -23,10 +23,24 @@ Browser-only (no backend) PDF reader for **Banco Falabella** (Chile) account sta
 
 ```
 PDF file
-  → src/lib/pdfText.ts        (pdfjs-dist → raw text string)
-  → src/lib/parseFalabella.ts (text → ParsedRow[])
-  → src/store/useCartola.ts   (addPdfFiles → MonthData[] → localStorage)
+  → src/lib/pdfText.ts          (pdfjs-dist → raw text string)
+  → src/lib/parseFalabella.ts   (text → ParsedRow[])
+  → src/lib/merchants.ts        (resolveMerchant → display name enrichment)
+  → src/store/useCartola.ts     (addPdfFiles → MonthData[] → localStorage)
 ```
+
+### Merchant Normalization Layer
+
+`resolveMerchant(desc, userMerchants)` in `src/lib/merchants.ts`:
+1. Search user-defined `MerchantAlias[]` from store (priority)
+2. Fall back to `COMMUNITY_MERCHANTS` bundled constant (`src/data/communityMerchants.ts`)
+3. Returns `MerchantAlias | null` — **display-only**, does not modify `Transaction.cat`
+
+`MerchantAlias` maps legal company names → friendly display names:
+- `"WALMART CHILE ..."` → `"Lider"`
+- `"SOCIEDAD DE HERMANOS... MULTICAR SPA"` → `"Unicar"` (user-defined)
+
+Stored in `localStorage` key `cartola:merchants`. Community merchants bundled in `src/data/communityMerchants.ts` (~60 Chilean merchants), never stored.
 
 ### Categorization Pipeline
 
@@ -51,6 +65,7 @@ Call `hydrate()` once on mount to load from localStorage. All writes go through 
 |-----|---------|
 | `cartola:months` | `MonthData[]` (all transactions) |
 | `cartola:budgets` | `BudgetMap` (cat → limit) |
+| `cartola:merchants` | `MerchantAlias[]` (user-defined only) |
 | `cartola:prefixOverrides` | `Record<prefix, SubCategory>` |
 | `cartola:dismissed` | dismissed alert keys |
 | `cartola_rules` | `CategoryRule[]` |
@@ -60,9 +75,11 @@ Call `hydrate()` once on mount to load from localStorage. All writes go through 
 ### Types
 
 - `CategoryTree` — user-editable hierarchy (main categories → subcategories), stored in localStorage; default generated on first load in `storage.ts:makeDefaultCategoryTree`
+- `MerchantAlias` — maps bank desc patterns to friendly names; `source: 'user' | 'community'`
 - `Transaction.cat` — auto-assigned by rules; `Transaction.catOverride` — manual override
 - `SubCategory` / `MainCategory` are plain strings (dynamic, not enums)
 - `getMainCategory(sub, tree)` resolves a subcategory name to its parent category
+- `categorizer.ts` is a shim — re-exports from `rules.ts`
 
 ### PDF Parsing Notes
 
@@ -79,4 +96,9 @@ Chilean amounts use `.` as thousands separator (e.g. `1.234.567`).
 - Zustand 5 (state)
 - Recharts 3 (charts)
 - pdfjs-dist 5 (PDF parsing)
-- `categorizer.ts` is a shim — re-exports from `rules.ts`
+
+## Roadmap
+
+See `ROADMAP.md` for milestone status.  
+Specs: `docs/superpowers/specs/`  
+Plans: `docs/superpowers/plans/`
