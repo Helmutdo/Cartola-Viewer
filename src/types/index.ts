@@ -16,6 +16,17 @@ export interface CategoryDefinition {
 
 export type CategoryTree = CategoryDefinition[]
 
+export interface MerchantAlias {
+  id: string
+  displayName: string       // nombre conocido: "Unicar", "Lider"
+  patterns: string[]        // substrings a buscar en desc (case-insensitive)
+  defaultCategory?: string  // subcategoría sugerida al crear el alias
+  source: 'user' | 'community'
+  confidence?: number       // reservado para M4+ fuzzy matching
+  createdAt: string
+  updatedAt: string
+}
+
 /** Dada una subcategoría, retorna su categoría principal usando el tree dinámico */
 export function getMainCategory(sub: string, tree: CategoryTree): string {
   for (const cat of tree) {

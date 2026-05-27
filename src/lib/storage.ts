@@ -1,5 +1,5 @@
 import type { CategoryRule } from './rules'
-import type { CategoryTree, MonthData, SubCategory } from '../types'
+import type { CategoryTree, MerchantAlias, MonthData, SubCategory } from '../types'
 
 const MONTHS_KEY = 'cartola:months'
 const BUDGETS_KEY = 'cartola:budgets'
@@ -8,6 +8,7 @@ const PREFIX_OVERRIDES_KEY = 'cartola:prefixOverrides'
 const DISMISSED_KEY = 'cartola:dismissed'
 const RULES_KEY = 'cartola_rules'
 const CATEGORY_TREE_KEY = 'cartola_category_tree'
+const MERCHANTS_KEY = 'cartola:merchants'
 
 // ─── Months ─────────────────────────────────────────────────────────────────
 
@@ -238,6 +239,23 @@ export function saveCategoryTree(tree: CategoryTree): void {
   localStorage.setItem(CATEGORY_TREE_KEY, JSON.stringify(tree))
 }
 
+// ─── Merchants ───────────────────────────────────────────────────────────────
+
+export function loadMerchants(): MerchantAlias[] {
+  try {
+    const raw = localStorage.getItem(MERCHANTS_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw) as MerchantAlias[]
+    return Array.isArray(parsed) ? parsed : []
+  } catch {
+    return []
+  }
+}
+
+export function saveMerchants(merchants: MerchantAlias[]): void {
+  localStorage.setItem(MERCHANTS_KEY, JSON.stringify(merchants))
+}
+
 // ─── Budgets ─────────────────────────────────────────────────────────────────
 
 export type BudgetMap = Record<string, number>
@@ -270,6 +288,7 @@ export function clearAll(): void {
       k === DISMISSED_KEY ||
       k === RULES_KEY ||
       k === CATEGORY_TREE_KEY ||
+      k === MERCHANTS_KEY ||
       k.startsWith(OVERRIDE_PREFIX)
     ) {
       keys.push(k)

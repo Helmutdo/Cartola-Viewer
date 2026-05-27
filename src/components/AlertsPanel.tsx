@@ -49,7 +49,7 @@ export function AlertsPanel({ transactions, allMonths, currentMonthKey }: Alerts
 
     // Comercios nuevos: desc no vista en meses anteriores (solo si hay 2+ meses)
     const previousMonths = allMonths.filter((m) => monthKeyOf(m) !== currentMonthKey)
-    let newMerchants: string[] = []
+    const newMerchants: string[] = []
     if (previousMonths.length > 0) {
       const prevPrefixes = new Set<string>()
       for (const m of previousMonths) {

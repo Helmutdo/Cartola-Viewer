@@ -4,6 +4,7 @@ import { BudgetPlanner } from './components/BudgetPlanner'
 import { CategoryEditorModal } from './components/CategoryEditorModal'
 import { CategoryManager } from './components/CategoryManager'
 import { CategoryPieChart } from './components/CategoryPieChart'
+import { MerchantManager } from './components/MerchantManager'
 import { MetricCards } from './components/MetricCards'
 import { MonthBarChart } from './components/MonthBarChart'
 import { MonthTabs } from './components/MonthTabs'
@@ -95,6 +96,7 @@ export default function App() {
             <MonthBarChart months={months} />
             <BudgetPlanner transactions={txs} />
             <RulesPanel />
+            <MerchantManager />
             <CategoryManager />
             <TransactionTable transactions={txs} monthKey={selectedKey ?? ''} onCategoryClick={setModalTx} />
           </>

@@ -27,3 +27,4 @@ dist-ssr
 #carpeta de usuario
 raodmap
 .superpowers/
+roadmap/**

@@ -7,17 +7,19 @@ import {
   loadAllMonths,
   loadBudgets,
   loadCategoryTree,
+  loadMerchants,
   loadOverrides,
   loadPrefixOverrides,
   loadRules,
   saveBudgets,
   saveCategoryTree,
   saveMonthData,
+  saveMerchants,
   savePrefixOverride,
   saveRules,
   type BudgetMap,
 } from '../lib/storage'
-import type { CategoryTree, MonthData, SubCategory, Transaction } from '../types'
+import type { CategoryTree, MerchantAlias, MonthData, SubCategory, Transaction } from '../types'
 import { effectiveCategory } from '../types'
 
 function rowsToTransactions(
@@ -79,6 +81,7 @@ interface CartolaState {
   budgets: BudgetMap
   rules: CategoryRule[]
   categoryTree: CategoryTree
+  merchants: MerchantAlias[]
   parseError: string | null
   isParsing: boolean
 
@@ -94,6 +97,11 @@ interface CartolaState {
   reapplyRules: () => void
 
   setCategoryTree: (tree: CategoryTree) => void
+
+  addMerchant: (alias: Omit<MerchantAlias, 'id' | 'createdAt' | 'updatedAt'>) => void
+  updateMerchant: (id: string, changes: Partial<Pick<MerchantAlias, 'displayName' | 'patterns' | 'defaultCategory'>>) => void
+  removeMerchant: (id: string) => void
+
   /** Migra la clave de presupuesto al renombrar una categoría principal */
   renameMainCategory: (oldName: string, newName: string) => void
   /** Actualiza cat y catOverride en todas las transacciones al renombrar una subcategoría */
@@ -118,6 +126,7 @@ export const useCartola = create<CartolaState>((set, get) => ({
   budgets: {},
   rules: [],
   categoryTree: [],
+  merchants: [],
   parseError: null,
   isParsing: false,
 
@@ -126,12 +135,14 @@ export const useCartola = create<CartolaState>((set, get) => ({
     const budgets = loadBudgets()
     const rules = loadRules()
     const categoryTree = loadCategoryTree()
+    const merchants = loadMerchants()
     const keys = months.map(monthKeyOf).filter(Boolean).sort()
     set({
       months,
       budgets,
       rules,
       categoryTree,
+      merchants,
       selectedMonthKey:
         get().selectedMonthKey && keys.includes(get().selectedMonthKey!)
           ? get().selectedMonthKey
@@ -250,6 +261,28 @@ export const useCartola = create<CartolaState>((set, get) => ({
   setCategoryTree: (tree) => {
     saveCategoryTree(tree)
     set({ categoryTree: tree })
+  },
+
+  addMerchant: (alias) => {
+    const now = new Date().toISOString()
+    const m: MerchantAlias = { ...alias, id: crypto.randomUUID(), createdAt: now, updatedAt: now }
+    const merchants = [...get().merchants, m]
+    saveMerchants(merchants)
+    set({ merchants })
+  },
+
+  updateMerchant: (id, changes) => {
+    const merchants = get().merchants.map((m) =>
+      m.id === id ? { ...m, ...changes, updatedAt: new Date().toISOString() } : m,
+    )
+    saveMerchants(merchants)
+    set({ merchants })
+  },
+
+  removeMerchant: (id) => {
+    const merchants = get().merchants.filter((m) => m.id !== id)
+    saveMerchants(merchants)
+    set({ merchants })
   },
 
   renameMainCategory: (oldName, newName) => {

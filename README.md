@@ -1,73 +1,33 @@
-1# React + TypeScript + Vite
+# Cartola Viewer
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Herramienta web para analizar estados de cuenta bancarios (cartolas) en formato PDF. Permite categorizar automáticamente gastos, visualizar estadísticas y gestionar presupuestos, funcionando 100% en tu navegador.
 
-Currently, two official plugins are available:
+### Características
+- Procesamiento de PDF local (sin servidor ni red).
+- Categorización inteligente automática.
+- Gráficos de gasto mensuales y por categoría.
+- Panel de revisión rápida y gestión de presupuestos.
+- Personalización de categorías y reglas.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+### Privacidad
+Tu seguridad es primero. Todos los datos se almacenan exclusivamente en `localStorage` de tu navegador. Ninguna información sale de tu equipo. Puedes borrar toda la información en cualquier momento desde la configuración.
 
-## React Compiler
+### Bancos soportados
+| Banco | Estado |
+| :--- | :--- |
+| Falabella Chile | Soportado |
+| Otros | Próximamente |
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+### Cómo usar
+1. **Subir PDF**: Carga tu estado de cuenta desde la zona de subida.
+2. **Revisar**: Clasifica y gestiona las transacciones detectadas.
+3. **Analizar**: Visualiza tus hábitos de gasto en el panel de control.
 
-## Expanding the ESLint configuration
+### Comandos
+- `npm run dev`: Inicia el servidor de desarrollo en `http://localhost:5173`.
+- `npm run build`: Compila el proyecto para producción.
+- `npm run lint`: Ejecuta el linter del código.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+### Limitaciones
+- El parser está diseñado específicamente para el formato PDF de Falabella.
+- Las transacciones vía "TRANSBANK/WEBPAY" pueden no ser identificables automáticamente debido a la falta de detalle en la cartola.

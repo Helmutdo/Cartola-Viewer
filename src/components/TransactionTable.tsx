@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { resolveMerchant } from '../lib/merchants'
 import { useCartola } from '../store/useCartola'
 import type { Transaction } from '../types'
 import { effectiveCategory, getMainCategory } from '../types'
@@ -50,6 +51,7 @@ export function TransactionTable({
   onCategoryClick: (t: Transaction) => void
 }) {
   const categoryTree = useCartola((s) => s.categoryTree)
+  const merchants = useCartola((s) => s.merchants)
 
   const colorMap = useMemo(
     () => Object.fromEntries(categoryTree.map((c) => [c.name, c.color])),
@@ -142,7 +144,19 @@ export function TransactionTable({
                 <tr key={t.id} className="hover:bg-slate-800/40">
                   <td className="whitespace-nowrap px-3 py-2 tabular-nums text-slate-400">{t.fecha}</td>
                   <td className="max-w-[280px] truncate px-3 py-2 text-slate-200" title={t.desc}>
-                    {t.desc}
+                    {(() => {
+                      const merchant = resolveMerchant(t.desc, merchants)
+                      return merchant ? (
+                        <span>
+                          <span className="text-slate-100">{merchant.displayName}</span>
+                          <span className="ml-1.5 text-xs text-slate-500">
+                            {t.desc.slice(0, 22)}…
+                          </span>
+                        </span>
+                      ) : (
+                        t.desc
+                      )
+                    })()}
                   </td>
                   <td className="whitespace-nowrap px-3 py-2 text-right tabular-nums text-rose-300">
                     {fmt(t.cargo)}

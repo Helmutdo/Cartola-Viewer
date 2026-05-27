@@ -1,4 +1,4 @@
-import type { Category } from '../types'
+import type { SubCategory } from '../types'
 import { autoCategorize } from './categorizer'
 
 export interface ParsedRow {
@@ -7,7 +7,7 @@ export interface ParsedRow {
   cargo: number
   abono: number
   month: string
-  cat: Category
+  cat: SubCategory
 }
 
 /** Ruido en la descripción que Falabella incluye pero no aporta info */
