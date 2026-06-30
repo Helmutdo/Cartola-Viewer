@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import { categorize, type CategoryRule } from '../lib/rules'
 import { monthKeyToLabel, parseFalabella, type ParsedRow } from '../lib/parseFalabella'
 import { extractTextFromPdfFile } from '../lib/pdfText'
+import { aiCategorize } from '../lib/aiCategorize'
 import {
   clearAll,
   loadAllMonths,
@@ -84,9 +85,13 @@ interface CartolaState {
   merchants: MerchantAlias[]
   parseError: string | null
   isParsing: boolean
+  aiStatus: 'idle' | 'running' | 'done'
+  aiError: string | null
+  aiCount: number
 
   hydrate: () => void
   addPdfFiles: (files: FileList | File[]) => Promise<void>
+  autoCategorizeAll: () => Promise<number>
   setSelectedMonthKey: (key: string | null) => void
   applyCategoryToDesc: (desc: string, cat: SubCategory) => void
   applyCategoryToTransaction: (id: string, cat: SubCategory) => void
@@ -129,6 +134,9 @@ export const useCartola = create<CartolaState>((set, get) => ({
   merchants: [],
   parseError: null,
   isParsing: false,
+  aiStatus: 'idle' as const,
+  aiError: null,
+  aiCount: 0,
 
   hydrate: () => {
     const months = loadAllMonths()
@@ -328,9 +336,45 @@ export const useCartola = create<CartolaState>((set, get) => ({
     set({ months })
   },
 
+  autoCategorizeAll: async () => {
+    set({ aiStatus: 'running', aiError: null, aiCount: 0 })
+    const { months } = get()
+    const allTxs = months.flatMap((m) => m.transactions)
+    const uncategorized = allTxs.filter((t) => effectiveCategory(t) === 'Sin categorizar')
+    const descs = [...new Set(uncategorized.map((t) => t.desc))]
+    if (descs.length === 0) {
+      set({ aiStatus: 'done', aiCount: 0 })
+      return 0
+    }
+    try {
+      const results = await aiCategorize(descs)
+      const categorized = results.filter((r) => r.category !== 'Sin categorizar')
+      const seen = new Set<string>()
+      for (const r of categorized) {
+        get().applyCategoryToDesc(r.desc, r.category)
+        const key = `${r.desc.slice(0, 30)}::${r.category}`
+        if (!seen.has(key)) {
+          seen.add(key)
+          get().addRule({
+            id: crypto.randomUUID(),
+            pattern: r.desc.slice(0, 30),
+            matchType: 'contains',
+            category: r.category,
+            createdAt: new Date().toISOString(),
+          })
+        }
+      }
+      set({ aiStatus: 'done', aiCount: categorized.length, aiError: null })
+      return categorized.length
+    } catch (e) {
+      set({ aiStatus: 'idle', aiError: e instanceof Error ? e.message : 'Error al conectar con IA' })
+      return 0
+    }
+  },
+
   resetAll: () => {
     clearAll()
-    const categoryTree = loadCategoryTree() // clearAll removed the key → regenera default
-    set({ months: [], selectedMonthKey: null, budgets: {}, rules: [], categoryTree, parseError: null })
+    const categoryTree = loadCategoryTree()
+    set({ months: [], selectedMonthKey: null, budgets: {}, rules: [], categoryTree, parseError: null, aiStatus: 'idle', aiError: null, aiCount: 0 })
   },
 }))

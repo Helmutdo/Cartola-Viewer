@@ -28,3 +28,6 @@ dist-ssr
 raodmap
 .superpowers/
 roadmap/**
+
+# Cartolas PDF / database
+basedatos-cartola-*/

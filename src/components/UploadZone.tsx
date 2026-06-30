@@ -1,16 +1,19 @@
 import { useCallback, useRef } from 'react'
 import { useCartola } from '../store/useCartola'
 
-export function UploadZone({ compact }: { compact?: boolean }) {
+export function UploadZone({ compact, onParseComplete }: { compact?: boolean; onParseComplete?: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null)
   const addPdfFiles = useCartola((s) => s.addPdfFiles)
   const isParsing = useCartola((s) => s.isParsing)
 
   const onFiles = useCallback(
-    (files: FileList | null) => {
-      if (files && files.length) void addPdfFiles(files)
+    async (files: FileList | null) => {
+      if (files && files.length) {
+        await addPdfFiles(files)
+        onParseComplete?.()
+      }
     },
-    [addPdfFiles],
+    [addPdfFiles, onParseComplete],
   )
 
   const onDrop = useCallback(

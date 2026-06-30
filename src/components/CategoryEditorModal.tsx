@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { CategoryRule } from '../lib/rules'
 import { resolveMerchant } from '../lib/merchants'
 import { useCartola } from '../store/useCartola'
 import { effectiveCategory, getMainCategory, type Transaction } from '../types'
@@ -8,6 +9,7 @@ export function CategoryEditorModal({ tx, onClose }: { tx: Transaction; onClose:
   const applyOne = useCartola((s) => s.applyCategoryToTransaction)
   const categoryTree = useCartola((s) => s.categoryTree)
   const merchants = useCartola((s) => s.merchants)
+  const addRule = useCartola((s) => s.addRule)
   const addMerchant = useCartola((s) => s.addMerchant)
   const updateMerchant = useCartola((s) => s.updateMerchant)
 
@@ -32,6 +34,17 @@ export function CategoryEditorModal({ tx, onClose }: { tx: Transaction; onClose:
       } else if (!existingMerchant || existingMerchant.source === 'community') {
         addMerchant({ displayName: name, patterns: [pattern], defaultCategory: sel, source: 'user' })
       }
+    }
+    if (sel !== 'Sin categorizar') {
+      const prefix = tx.desc.slice(0, 30)
+      const rule: CategoryRule = {
+        id: crypto.randomUUID(),
+        pattern: prefix,
+        matchType: 'contains',
+        category: sel,
+        createdAt: new Date().toISOString(),
+      }
+      addRule(rule)
     }
     applyFn()
     onClose()
