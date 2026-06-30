@@ -71,13 +71,22 @@ export function CategoryPieChart({ transactions }: { transactions: Transaction[]
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <ul className="mt-2 flex flex-wrap gap-2 text-xs text-slate-400">
-        {data.map((d) => (
-          <li key={d.name} className="flex items-center gap-1">
-            <span className="h-2 w-2 rounded-full" style={{ background: colorMap[d.name] ?? '#94a3b8' }} />
-            {d.name}
-          </li>
-        ))}
+      <ul className="mt-3 space-y-1 text-xs text-slate-400">
+        {data.map((d) => {
+          const pct = data.reduce((s, x) => s + x.value, 0) > 0
+            ? ((d.value / data.reduce((s, x) => s + x.value, 0)) * 100).toFixed(1)
+            : '0'
+          return (
+            <li key={d.name} className="flex items-center gap-2">
+              <span className="h-2 w-2 shrink-0 rounded-full" style={{ background: colorMap[d.name] ?? '#94a3b8' }} />
+              <span className="w-28 truncate text-slate-200">{d.name}</span>
+              <span className="tabular-nums text-slate-300">
+                {d.value.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })}
+              </span>
+              <span className="tabular-nums text-slate-500">{pct}%</span>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

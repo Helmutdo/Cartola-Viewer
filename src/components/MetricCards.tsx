@@ -18,8 +18,8 @@ export function MetricCards({ transactions }: { transactions: Transaction[] }) {
   }
 
   const cards = [
-    { title: 'Abonos totales', value: fmt(abonos), tone: 'text-teal-300' },
-    { title: 'Cargos totales', value: fmt(cargos), tone: 'text-rose-300' },
+    { title: 'Ingresos totales', value: fmt(abonos), tone: 'text-teal-300' },
+    { title: 'Gastos totales', value: fmt(cargos), tone: 'text-rose-300' },
     { title: 'Balance', value: fmt(balance), tone: balance < 0 ? 'text-red-400' : 'text-slate-100' },
     { title: 'Mayor gasto', value: mayor > 0 ? fmt(mayor) : '—', sub: mayor > 0 ? mayorDesc : undefined, tone: 'text-amber-300' },
   ]

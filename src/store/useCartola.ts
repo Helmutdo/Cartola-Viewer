@@ -164,7 +164,7 @@ export const useCartola = create<CartolaState>((set, get) => ({
       set({ parseError: 'Selecciona al menos un PDF.' })
       return
     }
-    set({ isParsing: true, parseError: null })
+    set({ isParsing: true, parseError: null, aiStatus: 'idle', aiError: null, aiCount: 0 })
     try {
       const overrides = loadOverrides()
       const prefixOverrides = loadPrefixOverrides()

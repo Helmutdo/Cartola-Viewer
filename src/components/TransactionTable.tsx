@@ -60,15 +60,18 @@ export function TransactionTable({
 
   const [catFilter, setCatFilter] = useState<string>('todas')
   const [typeFilter, setTypeFilter] = useState<TypeFilter>('todos')
+  const [search, setSearch] = useState('')
 
   const filtered = useMemo(() => {
+    const q = search.toLowerCase().trim()
     return transactions.filter((t) => {
       if (catFilter !== 'todas' && effectiveCategory(t) !== catFilter) return false
       if (typeFilter === 'cargos' && t.cargo <= 0) return false
       if (typeFilter === 'abonos' && t.abono <= 0) return false
+      if (q && !t.desc.toLowerCase().includes(q) && !t.fecha.includes(q)) return false
       return true
     })
-  }, [transactions, catFilter, typeFilter])
+  }, [transactions, catFilter, typeFilter, search])
 
   const sorted = useMemo(() => {
     return [...filtered].sort((a, b) => {
@@ -91,6 +94,16 @@ export function TransactionTable({
         >
           Exportar CSV
         </button>
+        <label className="flex flex-col gap-1 text-xs text-slate-500">
+          Buscar
+          <input
+            type="text"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Starbucks, 13/03…"
+            className="w-36 rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-slate-100 placeholder-slate-500"
+          />
+        </label>
         <label className="flex flex-col gap-1 text-xs text-slate-500">
           Categoría
           <select
@@ -118,8 +131,8 @@ export function TransactionTable({
             className="rounded-lg border border-slate-600 bg-slate-800 px-2 py-1.5 text-sm text-slate-100"
           >
             <option value="todos">Todos</option>
-            <option value="cargos">Solo cargos</option>
-            <option value="abonos">Solo abonos</option>
+            <option value="cargos">Solo gastos</option>
+            <option value="abonos">Solo ingresos</option>
           </select>
         </label>
       </div>
@@ -130,8 +143,8 @@ export function TransactionTable({
             <tr>
               <th className="px-3 py-2">Fecha</th>
               <th className="px-3 py-2">Descripción</th>
-              <th className="px-3 py-2 text-right">Cargo</th>
-              <th className="px-3 py-2 text-right">Abono</th>
+              <th className="px-3 py-2 text-right">Gasto</th>
+              <th className="px-3 py-2 text-right">Ingreso</th>
               <th className="px-3 py-2">Categoría</th>
             </tr>
           </thead>

@@ -8,14 +8,52 @@ import { MerchantManager } from './components/MerchantManager'
 import { MetricCards } from './components/MetricCards'
 import { MonthBarChart } from './components/MonthBarChart'
 import { MonthTabs } from './components/MonthTabs'
+import { QuickReview } from './components/QuickReview'
 import { RulesPanel } from './components/RulesPanel'
 import { TransactionTable } from './components/TransactionTable'
 import { UploadZone } from './components/UploadZone'
 import { useCartola } from './store/useCartola'
 import type { Transaction } from './types'
+import { effectiveCategory } from './types'
 
 function monthKeyOf(m: { label: string; transactions: { month: string }[] }): string {
   return m.transactions[0]?.month ?? m.label
+}
+
+function fmt(n: number) {
+  return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 })
+}
+
+function SummaryPanel({ txs, aiCount }: { txs: Transaction[]; aiCount: number }) {
+  const totalCargos = txs.reduce((s, t) => s + t.cargo, 0)
+  const totalAbonos = txs.reduce((s, t) => s + t.abono, 0)
+  const categorizadas = txs.filter((t) => effectiveCategory(t) !== 'Sin categorizar').length
+  const pct = txs.length > 0 ? Math.round((categorizadas / txs.length) * 100) : 0
+
+  return (
+    <div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4">
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
+        <p className="text-slate-100 font-semibold">{txs.length} movimientos procesados</p>
+        <span className="h-4 w-px bg-slate-700" />
+        <p className="text-slate-300">Gastaste <span className="text-rose-300 font-semibold">{fmt(totalCargos)}</span></p>
+        <span className="h-4 w-px bg-slate-700" />
+        <p className="text-slate-300">Ingresaste <span className="text-teal-300 font-semibold">{fmt(totalAbonos)}</span></p>
+        <span className="h-4 w-px bg-slate-700" />
+        <p className="text-slate-300">
+          Categorización: <span className={`font-semibold ${pct >= 90 ? 'text-teal-300' : pct >= 50 ? 'text-amber-300' : 'text-rose-300'}`}>
+            {pct}%
+          </span>
+          <span className="text-slate-500"> ({categorizadas}/{txs.length})</span>
+        </p>
+        {aiCount > 0 ? (
+          <>
+            <span className="h-4 w-px bg-slate-700" />
+            <p className="text-fuchsia-400 text-xs">{aiCount} categorizadas por IA</p>
+          </>
+        ) : null}
+      </div>
+    </div>
+  )
 }
 
 function ArrowUpTray() {
@@ -83,9 +121,13 @@ export default function App() {
   const parseError = useCartola((s) => s.parseError)
   const isParsing = useCartola((s) => s.isParsing)
   const aiStatus = useCartola((s) => s.aiStatus)
+  const aiCount = useCartola((s) => s.aiCount)
   const autoCategorizeAll = useCartola((s) => s.autoCategorizeAll)
+  const resetAll = useCartola((s) => s.resetAll)
 
   const [modalTx, setModalTx] = useState<Transaction | null>(null)
+  const [configOpen, setConfigOpen] = useState(false)
+  const [overlayVisible, setOverlayVisible] = useState(false)
   const autoTriggered = useRef(false)
 
   useEffect(() => {
@@ -94,6 +136,23 @@ export default function App() {
 
   const hasData = months.length > 0
 
+  // Show overlay while working; keep it open 1.5s after "done" so step 3 (Listo ✓) is visible
+  useEffect(() => {
+    if (isParsing || aiStatus === 'running') {
+      setOverlayVisible(true)
+    } else if (aiStatus === 'done') {
+      const t = setTimeout(() => setOverlayVisible(false), 1500)
+      return () => clearTimeout(t)
+    } else {
+      setOverlayVisible(false)
+    }
+  }, [isParsing, aiStatus])
+
+  // Reset trigger when a new upload starts so AI reruns on each new PDF
+  useEffect(() => {
+    if (isParsing) autoTriggered.current = false
+  }, [isParsing])
+
   // Auto-trigger AI when parsing completes
   useEffect(() => {
     if (!isParsing && hasData && !autoTriggered.current) {
@@ -101,13 +160,6 @@ export default function App() {
       autoCategorizeAll()
     }
   }, [isParsing, hasData, autoCategorizeAll])
-
-  // Reset trigger when going back to idle
-  useEffect(() => {
-    if (aiStatus === 'idle' && !isParsing) autoTriggered.current = false
-  }, [aiStatus, isParsing])
-
-  const processing = isParsing || aiStatus === 'running'
 
   const selectedMonth = useMemo(() => {
     if (!selectedKey) return null
@@ -130,7 +182,18 @@ export default function App() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <UploadZone compact />
+            {hasData ? <UploadZone compact /> : null}
+            {hasData ? (
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm('¿Borrar todos los datos? Esta acción no se puede deshacer.')) resetAll()
+                }}
+                className="rounded-lg border border-slate-700 px-3 py-2 text-xs text-slate-500 hover:bg-slate-800 hover:text-slate-300"
+              >
+                Limpiar datos
+              </button>
+            ) : null}
           </div>
         </div>
       </header>
@@ -142,7 +205,7 @@ export default function App() {
           </div>
         ) : null}
 
-        {!hasData && !processing ? (
+        {!hasData && !overlayVisible ? (
           /* ── Welcome ── */
           <section className="flex flex-col items-center justify-center py-24">
             <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-2xl bg-amber-500/10">
@@ -169,11 +232,13 @@ export default function App() {
         ) : null}
 
         {/* Processing overlay */}
-        {processing ? <ProcessingOverlay isParsing={isParsing} aiStatus={aiStatus} /> : null}
+        {overlayVisible ? <ProcessingOverlay isParsing={isParsing} aiStatus={aiStatus} /> : null}
 
         {/* Dashboard */}
-        {hasData && !processing ? (
+        {hasData && !overlayVisible ? (
           <div className="space-y-6">
+            <QuickReview transactions={txs} />
+            <SummaryPanel txs={txs} aiCount={aiCount} />
             <MonthTabs />
             <MetricCards transactions={txs} />
             <div className="grid gap-6 lg:grid-cols-2">
@@ -181,11 +246,27 @@ export default function App() {
               <AlertsPanel transactions={txs} allMonths={months} currentMonthKey={selectedKey ?? ''} />
             </div>
             <MonthBarChart months={months} />
-            <BudgetPlanner transactions={txs} />
-            <RulesPanel />
-            <MerchantManager />
-            <CategoryManager />
             <TransactionTable transactions={txs} monthKey={selectedKey ?? ''} onCategoryClick={setModalTx} />
+
+            {/* Configuración colapsada */}
+            <div className="rounded-xl border border-slate-800">
+              <button
+                type="button"
+                onClick={() => setConfigOpen(!configOpen)}
+                className="flex w-full items-center justify-between px-4 py-3 text-sm font-medium text-slate-300 hover:text-slate-100"
+              >
+                <span>⚙️ Configuración</span>
+                <span className={`transition-transform ${configOpen ? 'rotate-180' : ''}`}>▼</span>
+              </button>
+              {configOpen ? (
+                <div className="space-y-6 border-t border-slate-800 p-4">
+                  <BudgetPlanner transactions={txs} />
+                  <RulesPanel />
+                  <MerchantManager />
+                  <CategoryManager />
+                </div>
+              ) : null}
+            </div>
           </div>
         ) : null}
       </main>

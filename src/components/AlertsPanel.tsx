@@ -79,11 +79,7 @@ export function AlertsPanel({ transactions, allMonths, currentMonthKey }: Alerts
   const showNewMerchants = newMerchants.length > 0 && !dismissed.has(newMerchantsKey)
 
   if (!visibleUnusual.length && !showBalance && !showNewMerchants) {
-    return (
-      <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 text-sm text-slate-500">
-        Sin alertas activas en este mes.
-      </div>
-    )
+    return null
   }
 
   return (
